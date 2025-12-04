@@ -29,12 +29,29 @@
                     <button class="btn btn-primary" id="register-btn">Register</button>
                 </div>
                 <div class="user-profile" id="user-profile" style="display: none;">
-                    <div class="user-avatar" id="user-avatar">JD</div>
-                    <div class="user-info">
-                        <span id="user-name">John Doe</span>
-                        <span class="user-role" id="user-role">Volunteer</span>
+                    <div class="profile-trigger" id="profile-trigger">
+                        <div class="user-avatar" id="user-avatar">JD</div>
+                        <div class="user-info">
+                            <span id="user-name">John Doe</span>
+                            <span class="user-role" id="user-role">Volunteer</span>
+                        </div>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
                     </div>
-                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 1rem;">Logout</button>
+                    <div class="profile-dropdown" id="profile-dropdown">
+                        <a href="#" class="dropdown-item" id="dropdown-view-profile">
+                            <i class="fas fa-user"></i>
+                            <span>View Profile</span>
+                        </a>
+                        <a href="#" class="dropdown-item" id="dropdown-manage-account">
+                            <i class="fas fa-cog"></i>
+                            <span>Manage Account</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item dropdown-logout" id="dropdown-logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,6 +151,96 @@
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
                     </form>
+                </div>
+            </section>
+
+            <!-- View Profile Section -->
+            <section id="view-profile" class="page-section">
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <div class="profile-avatar-large" id="profile-avatar-large">JD</div>
+                        <div class="profile-header-info">
+                            <h1 id="profile-display-name">John Doe</h1>
+                            <span class="profile-role-badge" id="profile-display-role">Volunteer</span>
+                        </div>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-detail-card">
+                            <h3><i class="fas fa-info-circle"></i> Profile Information</h3>
+                            <div class="profile-detail-row">
+                                <span class="detail-label">Full Name</span>
+                                <span class="detail-value" id="profile-name-value">John Doe</span>
+                            </div>
+                            <div class="profile-detail-row">
+                                <span class="detail-label">Email</span>
+                                <span class="detail-value" id="profile-email-value">john@example.com</span>
+                            </div>
+                            <div class="profile-detail-row">
+                                <span class="detail-label">Role</span>
+                                <span class="detail-value" id="profile-role-value">Volunteer</span>
+                            </div>
+                            <div class="profile-detail-row">
+                                <span class="detail-label">Location</span>
+                                <span class="detail-value" id="profile-location-value">Not specified</span>
+                            </div>
+                            <div class="profile-detail-row">
+                                <span class="detail-label">Account Status</span>
+                                <span class="detail-value" id="profile-verified-value">
+                                    <span class="status-badge status-pending">Pending Verification</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn btn-primary" id="go-to-manage-account">
+                            <i class="fas fa-cog"></i> Manage Account
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manage Account Section -->
+            <section id="manage-account" class="page-section">
+                <div class="account-container">
+                    <h2 class="form-title"><i class="fas fa-cog"></i> Manage Account</h2>
+                    
+                    <div class="account-section">
+                        <h3><i class="fas fa-user-edit"></i> Update Profile</h3>
+                        <form id="update-profile-form">
+                            <div class="form-group">
+                                <label for="update-name">Full Name *</label>
+                                <input type="text" id="update-name" placeholder="Your full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="update-location">Location</label>
+                                <input type="text" id="update-location" placeholder="Your city or area">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="account-section">
+                        <h3><i class="fas fa-lock"></i> Change Password</h3>
+                        <form id="change-password-form">
+                            <div class="form-group">
+                                <label for="current-password">Current Password *</label>
+                                <input type="password" id="current-password" placeholder="Enter current password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password *</label>
+                                <input type="password" id="new-password" placeholder="Enter new password (min 6 characters)" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-new-password">Confirm New Password *</label>
+                                <input type="password" id="confirm-new-password" placeholder="Confirm new password" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-key"></i> Change Password
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </section>
         </div>

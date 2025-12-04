@@ -3,6 +3,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
 const cors = require('cors');
 require('dotenv').config();
 
@@ -36,6 +37,9 @@ app.use(session({
     resave: false,                    // Don't save session if unmodified
     saveUninitialized: false,         // Don't create session until something stored
     name: 'sessionId',
+    store: new MemoryStore({
+        checkPeriod: 86400000 // prune expired entries every 24h
+    }),
     cookie: {
         secure: false,                // false for HTTP (localhost)
         httpOnly: true,               // Prevent XSS attacks
@@ -254,6 +258,82 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/auth/me', isAuthenticated, (req, res) => {
     res.json({ user: req.session.user });
+});
+
+// Update user profile
+app.put('/api/auth/profile', isAuthenticated, async (req, res) => {
+    try {
+        const { name, location } = req.body;
+        const userId = req.session.user.id;
+
+        if (!name || name.trim().length === 0) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+
+        await pool.query(
+            'UPDATE users SET name = ?, location = ? WHERE user_id = ?',
+            [name.trim(), location || null, userId]
+        );
+
+        // Update session with new data
+        req.session.user.name = name.trim();
+        req.session.user.location = location || null;
+
+        // Save session
+        await new Promise((resolve, reject) => {
+            req.session.save((err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        console.log('✅ Profile updated for:', req.session.user.email);
+        res.json({
+            message: 'Profile updated successfully',
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('❌ Profile update error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// Change password
+app.put('/api/auth/password', isAuthenticated, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.session.user.id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current and new password are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters' });
+        }
+
+        // Get current user password
+        const [users] = await pool.query('SELECT password FROM users WHERE user_id = ?', [userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Verify current password
+        const validPassword = await bcrypt.compare(currentPassword, users[0].password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+
+        // Hash and save new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query('UPDATE users SET password = ? WHERE user_id = ?', [hashedPassword, userId]);
+
+        console.log('✅ Password changed for:', req.session.user.email);
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('❌ Password change error:', error);
+        res.status(500).json({ error: 'Failed to change password' });
+    }
 });
 
 // ==================== REQUEST ROUTES ====================
