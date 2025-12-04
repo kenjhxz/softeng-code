@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatYaNeed - Community Needs Board</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="whatyaneed-frontend.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-hands-helping"></i>
+                    <span>WhatYaNeed</span>
+                </div>
+                <nav id="main-nav">
+                    <ul id="nav-menu">
+                        <li><a href="#" class="nav-link" data-section="home">Home</a></li>
+                        <li style="display: none;" id="nav-browse"><a href="#" class="nav-link" data-section="browse">Browse Requests</a></li>
+                        <li style="display: none;" id="nav-my-requests"><a href="#" class="nav-link" data-section="requester-dashboard">My Requests</a></li>
+                        <li style="display: none;" id="nav-create"><a href="#" class="nav-link" data-section="create">Create Request</a></li>
+                        <li style="display: none;" id="nav-my-offers"><a href="#" class="nav-link" data-section="volunteer-dashboard">My Offers</a></li>
+                    </ul>
+                </nav>
+                <div class="user-actions" id="user-actions">
+                    <button class="btn btn-outline" id="login-btn">Login</button>
+                    <button class="btn btn-primary" id="register-btn">Register</button>
+                </div>
+                <div class="user-profile" id="user-profile" style="display: none;">
+                    <div class="user-avatar" id="user-avatar">JD</div>
+                    <div class="user-info">
+                        <span id="user-name">John Doe</span>
+                        <span class="user-role" id="user-role">Volunteer</span>
+                    </div>
+                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 1rem;">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Home Section -->
+            <section id="home" class="page-section active-section">
+                <div class="hero">
+                    <h1>Connecting Community Needs with Helpers</h1>
+                    <p>WhatYaNeed is a platform where community members can request help and volunteers can offer assistance for various needs.</p>
+                    <div class="search-bar">
+                        <input type="text" placeholder="Search for requests..." id="home-search">
+                        <button id="home-search-btn"><i class="fas fa-search"></i> Search</button>
+                    </div>
+                </div>
+
+                <h2>Recent Requests</h2>
+                <div class="posts-grid" id="home-requests-grid">
+                    <p>Loading requests...</p>
+                </div>
+            </section>
+
+            <!-- Browse Requests Section -->
+            <section id="browse" class="page-section">
+                <h2>Browse Available Requests</h2>
+                <div class="posts-grid" id="browse-requests-grid">
+                    <p>Loading requests...</p>
+                </div>
+            </section>
+
+            <!-- Requester Dashboard -->
+            <section id="requester-dashboard" class="page-section">
+                <h2>Requester Dashboard</h2>
+                <div class="dashboard-cards" id="requester-stats"></div>
+                <h3>Your Active Requests</h3>
+                <div class="posts-grid" id="requester-requests-grid">
+                    <p>Loading your requests...</p>
+                </div>
+                <h3>Recent Notifications</h3>
+                <div class="notifications" id="requester-notifications">
+                    <p>Loading notifications...</p>
+                </div>
+            </section>
+
+            <!-- Volunteer Dashboard -->
+            <section id="volunteer-dashboard" class="page-section">
+                <h2>Volunteer Dashboard</h2>
+                <div class="dashboard-cards" id="volunteer-stats"></div>
+                <h3>Your Active Offers</h3>
+                <div class="posts-grid" id="volunteer-offers-grid">
+                    <p>Loading your offers...</p>
+                </div>
+                <h3>Recent Notifications</h3>
+                <div class="notifications" id="volunteer-notifications">
+                    <p>Loading notifications...</p>
+                </div>
+            </section>
+
+            <!-- Create Request Section -->
+            <section id="create" class="page-section">
+                <div class="form-container">
+                    <h2 class="form-title">Create New Request</h2>
+                    <form id="request-form">
+                        <div class="form-group">
+                            <label for="request-title">Title *</label>
+                            <input type="text" id="request-title" placeholder="What do you need help with?" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="request-description">Description *</label>
+                            <textarea id="request-description" placeholder="Please describe your request in detail..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="request-category">Category *</label>
+                            <select id="request-category" required>
+                                <option value="">Select a category</option>
+                                <option>Home Repair</option>
+                                <option>Groceries</option>
+                                <option>Transportation</option>
+                                <option>Technology</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="request-urgency">Urgency Level *</label>
+                            <select id="request-urgency" required>
+                                <option value="">Select urgency level</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Moderate</option>
+                                <option value="high">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="request-location">Location *</label>
+                            <input type="text" id="request-location" placeholder="Where is help needed?" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Login Modal (NO ROLE SELECTION) -->
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-login">&times;</span>
+            <h2 class="form-title">Login to WhatYaNeed</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required placeholder="Your email address">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required placeholder="Your password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                <p style="text-align: center; margin-top: 1rem;">
+                    Don't have an account? <a href="#" id="switch-to-register" style="color: var(--primary);">Register now</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal (WITH ROLE SELECTION) -->
+    <div class="modal" id="register-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-register">&times;</span>
+            <h2 class="form-title">Create an Account</h2>
+            <form id="register-form">
+                <div class="user-type-selector">
+                    <div class="user-type active" data-role="requester">I Need Help</div>
+                    <div class="user-type" data-role="volunteer">I Want to Help</div>
+                </div>
+                <div class="form-group">
+                    <label for="register-name">Full Name *</label>
+                    <input type="text" id="register-name" required placeholder="Your full name">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email *</label>
+                    <input type="email" id="register-email" required placeholder="Your email address">
+                </div>
+                <div class="form-group">
+                    <label for="register-location">Location</label>
+                    <input type="text" id="register-location" placeholder="Your city or area">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password *</label>
+                    <input type="password" id="register-password" required placeholder="Create a password (min 6 characters)" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm">Confirm Password *</label>
+                    <input type="password" id="register-confirm" required placeholder="Confirm your password" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+                <p style="text-align: center; margin-top: 1rem;">
+                    Already have an account? <a href="#" id="switch-to-login" style="color: var(--primary);">Login now</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>WhatYaNeed</h3>
+                    <p>Connecting community needs with <br> volunteers who can help.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="#">Home</a></li>
+                        <li><a href="#">How It Works</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Contact Us</h3>
+                    <ul>
+                        <li><a href="#"><i class="fas fa-envelope"></i> support@whatyaneed.com</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2024 WhatYaNeed - Ducut, Mascardo. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="whatyaneed-frontend.js"></script>
+</body>
+</html>
