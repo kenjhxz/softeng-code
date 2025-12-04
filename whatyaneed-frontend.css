@@ -500,7 +500,6 @@ footer {
     transition: var(--transition);
 }
 
-.profile-dropdown.show ~ .profile-trigger .dropdown-arrow,
 .user-profile.dropdown-open .dropdown-arrow {
     transform: rotate(180deg);
 }

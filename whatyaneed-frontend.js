@@ -289,7 +289,7 @@ function updateUIAfterLogin() {
     document.getElementById('user-role').textContent = 
         currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
     
-    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+    const initials = currentUser.name.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').substring(0, 2);
     document.getElementById('user-avatar').textContent = initials.toUpperCase();
     
     document.getElementById('nav-browse').style.display = 'none';
@@ -745,7 +745,7 @@ function loadViewProfile() {
     console.log('👤 Loading view profile...');
     
     // Set avatar initials
-    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+    const initials = currentUser.name.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').substring(0, 2);
     document.getElementById('profile-avatar-large').textContent = initials.toUpperCase();
     
     // Set header info
