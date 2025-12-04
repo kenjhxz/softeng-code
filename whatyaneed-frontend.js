@@ -26,7 +26,18 @@ function initializeEventListeners() {
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const requestForm = document.getElementById('request-form');
-    const logoutBtn = document.getElementById('logout-btn');
+    
+    // Profile dropdown elements
+    const profileTrigger = document.getElementById('profile-trigger');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    const dropdownViewProfile = document.getElementById('dropdown-view-profile');
+    const dropdownManageAccount = document.getElementById('dropdown-manage-account');
+    const dropdownLogout = document.getElementById('dropdown-logout');
+    
+    // Profile and Account forms
+    const updateProfileForm = document.getElementById('update-profile-form');
+    const changePasswordForm = document.getElementById('change-password-form');
+    const goToManageAccount = document.getElementById('go-to-manage-account');
 
     loginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
     registerBtn.addEventListener('click', () => registerModal.style.display = 'flex');
@@ -45,7 +56,46 @@ function initializeEventListeners() {
         loginModal.style.display = 'flex';
     });
 
-    logoutBtn.addEventListener('click', handleLogout);
+    // Profile dropdown toggle
+    profileTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileDropdown.classList.toggle('show');
+        document.getElementById('user-profile').classList.toggle('dropdown-open');
+    });
+    
+    // Dropdown menu items
+    dropdownViewProfile.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileDropdown.classList.remove('show');
+        document.getElementById('user-profile').classList.remove('dropdown-open');
+        navigateToSection('view-profile');
+        loadViewProfile();
+    });
+    
+    dropdownManageAccount.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileDropdown.classList.remove('show');
+        document.getElementById('user-profile').classList.remove('dropdown-open');
+        navigateToSection('manage-account');
+        loadManageAccount();
+    });
+    
+    dropdownLogout.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileDropdown.classList.remove('show');
+        document.getElementById('user-profile').classList.remove('dropdown-open');
+        handleLogout();
+    });
+    
+    // Go to Manage Account from View Profile
+    goToManageAccount.addEventListener('click', () => {
+        navigateToSection('manage-account');
+        loadManageAccount();
+    });
+    
+    // Profile and password update forms
+    updateProfileForm.addEventListener('submit', handleUpdateProfile);
+    changePasswordForm.addEventListener('submit', handleChangePassword);
 
     document.querySelectorAll('.user-type').forEach(type => {
         type.addEventListener('click', function() {
@@ -67,9 +117,16 @@ function initializeEventListeners() {
         });
     });
 
+    // Click outside to close dropdown and modals
     window.addEventListener('click', function(e) {
         if (e.target === loginModal) loginModal.style.display = 'none';
         if (e.target === registerModal) registerModal.style.display = 'none';
+        
+        // Close profile dropdown when clicking outside
+        if (!e.target.closest('.user-profile')) {
+            profileDropdown.classList.remove('show');
+            document.getElementById('user-profile').classList.remove('dropdown-open');
+        }
     });
 }
 
@@ -679,6 +736,164 @@ function getCategoryIcon(category) {
         'Other': 'hand-holding-heart'
     };
     return icons[category] || 'hand-holding-heart';
+}
+
+// ==================== PROFILE & ACCOUNT FUNCTIONS ====================
+function loadViewProfile() {
+    if (!currentUser) return;
+    
+    console.log('👤 Loading view profile...');
+    
+    // Set avatar initials
+    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+    document.getElementById('profile-avatar-large').textContent = initials.toUpperCase();
+    
+    // Set header info
+    document.getElementById('profile-display-name').textContent = currentUser.name;
+    const roleDisplay = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    document.getElementById('profile-display-role').textContent = roleDisplay;
+    
+    // Set detail values
+    document.getElementById('profile-name-value').textContent = currentUser.name;
+    document.getElementById('profile-email-value').textContent = currentUser.email;
+    document.getElementById('profile-role-value').textContent = roleDisplay;
+    document.getElementById('profile-location-value').textContent = currentUser.location || 'Not specified';
+    
+    // Set verification status
+    const verifiedEl = document.getElementById('profile-verified-value');
+    if (currentUser.verified) {
+        verifiedEl.innerHTML = '<span class="status-badge status-verified">Verified</span>';
+    } else {
+        verifiedEl.innerHTML = '<span class="status-badge status-pending">Pending Verification</span>';
+    }
+}
+
+function loadManageAccount() {
+    if (!currentUser) return;
+    
+    console.log('⚙️ Loading manage account...');
+    
+    // Pre-fill the update profile form
+    document.getElementById('update-name').value = currentUser.name;
+    document.getElementById('update-location').value = currentUser.location || '';
+    
+    // Clear password fields
+    document.getElementById('current-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-new-password').value = '';
+}
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    
+    if (!currentUser) {
+        alert('Please login to update your profile.');
+        return;
+    }
+    
+    const name = document.getElementById('update-name').value.trim();
+    const location = document.getElementById('update-location').value.trim();
+    
+    if (!name) {
+        alert('Name is required.');
+        return;
+    }
+    
+    console.log('📤 Updating profile...');
+    
+    try {
+        const response = await fetch(`${API_URL}/auth/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, location })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Profile updated successfully');
+            currentUser = data.user;
+            updateUIAfterLogin();
+            alert('Profile updated successfully!');
+        } else {
+            console.error('❌ Profile update failed:', data);
+            if (response.status === 401) {
+                alert('Session expired. Please login again.');
+                currentUser = null;
+                navigateToSection('home');
+            } else {
+                alert(data.error || 'Failed to update profile.');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error updating profile:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    
+    if (!currentUser) {
+        alert('Please login to change your password.');
+        return;
+    }
+    
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-new-password').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        alert('All password fields are required.');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        alert("New passwords don't match!");
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('New password must be at least 6 characters long.');
+        return;
+    }
+    
+    console.log('🔐 Changing password...');
+    
+    try {
+        const response = await fetch(`${API_URL}/auth/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Password changed successfully');
+            alert('Password changed successfully!');
+            // Clear password fields
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-new-password').value = '';
+        } else {
+            console.error('❌ Password change failed:', data);
+            if (response.status === 401 && data.error === 'Current password is incorrect') {
+                alert('Current password is incorrect. Please try again.');
+            } else if (response.status === 401) {
+                alert('Session expired. Please login again.');
+                currentUser = null;
+                navigateToSection('home');
+            } else {
+                alert(data.error || 'Failed to change password.');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error changing password:', error);
+        alert('Connection error. Please try again.');
+    }
 }
 
 window.navigateToSection = navigateToSection;
