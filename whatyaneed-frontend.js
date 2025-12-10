@@ -17,21 +17,31 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeEventListeners() {
     const loginModal = document.getElementById('login-modal');
     const registerModal = document.getElementById('register-modal');
+    const manageAccountModal = document.getElementById('manage-account-modal');
     const loginBtn = document.getElementById('login-btn');
     const registerBtn = document.getElementById('register-btn');
     const closeLogin = document.getElementById('close-login');
     const closeRegister = document.getElementById('close-register');
+    const closeManageAccount = document.getElementById('close-manage-account');
     const switchToRegister = document.getElementById('switch-to-register');
     const switchToLogin = document.getElementById('switch-to-login');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const requestForm = document.getElementById('request-form');
     const logoutBtn = document.getElementById('logout-btn');
+    const manageAccountBtn = document.getElementById('manage-account-btn');
+    const notificationBell = document.getElementById('notification-bell');
+    const homeSearchBtn = document.getElementById('home-search-btn');
+    const homeSearchInput = document.getElementById('home-search');
+    const uploadImageBtn = document.getElementById('upload-image-btn');
+    const profileImageInput = document.getElementById('profile-image-input');
+    const switchRoleBtn = document.getElementById('switch-role-btn');
 
     loginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
     registerBtn.addEventListener('click', () => registerModal.style.display = 'flex');
     closeLogin.addEventListener('click', () => loginModal.style.display = 'none');
     closeRegister.addEventListener('click', () => registerModal.style.display = 'none');
+    closeManageAccount.addEventListener('click', () => manageAccountModal.style.display = 'none');
     
     switchToRegister.addEventListener('click', (e) => {
         e.preventDefault();
@@ -46,6 +56,29 @@ function initializeEventListeners() {
     });
 
     logoutBtn.addEventListener('click', handleLogout);
+    manageAccountBtn.addEventListener('click', () => {
+        openManageAccountModal();
+        manageAccountModal.style.display = 'flex';
+    });
+
+    // Notification bell toggle
+    notificationBell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleNotificationDropdown();
+    });
+
+    // Home search functionality
+    homeSearchBtn.addEventListener('click', handleHomeSearch);
+    homeSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleHomeSearch();
+    });
+
+    // Profile image upload
+    uploadImageBtn.addEventListener('click', () => profileImageInput.click());
+    profileImageInput.addEventListener('change', handleProfileImageUpload);
+
+    // Role switch
+    switchRoleBtn.addEventListener('click', handleRoleSwitch);
 
     document.querySelectorAll('.user-type').forEach(type => {
         type.addEventListener('click', function() {
@@ -70,6 +103,13 @@ function initializeEventListeners() {
     window.addEventListener('click', function(e) {
         if (e.target === loginModal) loginModal.style.display = 'none';
         if (e.target === registerModal) registerModal.style.display = 'none';
+        if (e.target === manageAccountModal) manageAccountModal.style.display = 'none';
+        
+        // Close notification dropdown if clicked outside
+        const dropdown = document.getElementById('notification-dropdown');
+        if (!notificationBell.contains(e.target) && dropdown.classList.contains('active')) {
+            dropdown.classList.remove('active');
+        }
     });
 }
 
@@ -232,8 +272,14 @@ function updateUIAfterLogin() {
     document.getElementById('user-role').textContent = 
         currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
     
-    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
-    document.getElementById('user-avatar').textContent = initials.toUpperCase();
+    // Update avatar with profile image or initials
+    const avatarEl = document.getElementById('user-avatar');
+    if (currentUser.profile_image) {
+        avatarEl.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
+    } else {
+        const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        avatarEl.textContent = initials.toUpperCase();
+    }
     
     document.getElementById('nav-browse').style.display = 'none';
     document.getElementById('nav-my-requests').style.display = 'none';
@@ -247,6 +293,10 @@ function updateUIAfterLogin() {
         document.getElementById('nav-browse').style.display = 'list-item';
         document.getElementById('nav-my-offers').style.display = 'list-item';
     }
+    
+    // Start loading notifications
+    loadNotificationCount();
+    startNotificationPolling();
 }
 
 function navigateToSection(sectionId) {
@@ -432,6 +482,8 @@ async function handleOfferHelp(requestId) {
 }
 
 // ==================== DASHBOARD FUNCTIONS ====================
+let requesterRequestsData = [];
+
 async function loadRequesterDashboard() {
     if (!currentUser || currentUser.role !== 'requester') return;
     
@@ -444,8 +496,10 @@ async function loadRequesterDashboard() {
         
         if (response.ok) {
             const data = await response.json();
-            displayRequesterRequests(data.requests);
+            requesterRequestsData = data.requests;
             loadRequesterStats(data.requests);
+            // Default to showing active requests
+            filterRequesterRequests('active');
         } else if (response.status === 401) {
             console.error('❌ Session expired');
             alert('Session expired. Please login again.');
@@ -455,16 +509,44 @@ async function loadRequesterDashboard() {
     } catch (error) {
         console.error('❌ Error loading requester dashboard:', error);
     }
-    
-    // Load notifications without blocking
-    loadNotifications('requester-notifications');
 }
 
-function displayRequesterRequests(requests) {
-    const grid = document.getElementById('requester-requests-grid');
+function filterRequesterRequests(filter) {
+    let filteredRequests = [];
+    let title = '';
+    
+    switch(filter) {
+        case 'active':
+            filteredRequests = requesterRequestsData.filter(r => r.status === 'open');
+            title = 'Your Active Requests';
+            break;
+        case 'pending':
+            filteredRequests = requesterRequestsData.filter(r => r.pending_offers > 0);
+            title = 'Requests with Pending Offers';
+            break;
+        case 'completed':
+            filteredRequests = requesterRequestsData.filter(r => r.status === 'closed');
+            title = 'Your Completed Requests';
+            break;
+        default:
+            filteredRequests = requesterRequestsData;
+            title = 'All Your Requests';
+    }
+    
+    document.getElementById('filter-title').textContent = title;
+    displayFilteredRequests(filteredRequests);
+    
+    // Update active card styling
+    document.querySelectorAll('.dashboard-card').forEach(card => card.classList.remove('active'));
+    const activeCard = document.querySelector(`.dashboard-card[data-filter="${filter}"]`);
+    if (activeCard) activeCard.classList.add('active');
+}
+
+function displayFilteredRequests(requests) {
+    const grid = document.getElementById('filtered-content');
     
     if (requests.length === 0) {
-        grid.innerHTML = '<p>You haven\'t created any requests yet. <a href="#" onclick="navigateToSection(\'create\')">Create your first request</a></p>';
+        grid.innerHTML = '<p>No requests found for this filter.</p>';
         return;
     }
     
@@ -477,17 +559,17 @@ function loadRequesterStats(requests) {
     const pendingOffers = requests.reduce((sum, r) => sum + (r.pending_offers || 0), 0);
     
     document.getElementById('requester-stats').innerHTML = `
-        <div class="dashboard-card">
+        <div class="dashboard-card" data-filter="active" onclick="filterRequesterRequests('active')">
             <i class="fas fa-list-alt"></i>
             <h3>Active Requests</h3>
             <p>${activeCount} Open</p>
         </div>
-        <div class="dashboard-card">
+        <div class="dashboard-card" data-filter="pending" onclick="filterRequesterRequests('pending')">
             <i class="fas fa-users"></i>
             <h3>Pending Offers</h3>
             <p>${pendingOffers} Offers</p>
         </div>
-        <div class="dashboard-card">
+        <div class="dashboard-card" data-filter="completed" onclick="filterRequesterRequests('completed')">
             <i class="fas fa-check-circle"></i>
             <h3>Completed</h3>
             <p>${completedCount} Requests</p>
@@ -518,8 +600,6 @@ async function loadVolunteerDashboard() {
     } catch (error) {
         console.error('❌ Error loading volunteer dashboard:', error);
     }
-    
-    loadNotifications('volunteer-notifications');
 }
 
 function displayVolunteerOffers(offers) {
@@ -556,45 +636,25 @@ function loadVolunteerStats(offers) {
     `;
 }
 
-// FIXED: Don't fail if notifications return empty
-async function loadNotifications(containerId) {
-    try {
-        const response = await fetch(`${API_URL}/notifications`, {
-            credentials: 'include'
-        });
-        
-        const container = document.getElementById(containerId);
-        
-        if (response.ok) {
-            const data = await response.json();
-            
-            if (data.notifications && data.notifications.length > 0) {
-                container.innerHTML = data.notifications.map(notif => `
-                    <div class="notification">
-                        <h4><i class="fas fa-bell"></i> Notification</h4>
-                        <p>${notif.message}</p>
-                        <small>${new Date(notif.sent_date).toLocaleString()}</small>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p>No notifications yet.</p>';
-            }
-        } else {
-            // Don't show error for notifications
-            container.innerHTML = '<p>No notifications available.</p>';
-        }
-    } catch (error) {
-        console.log('ℹ️  Could not load notifications (non-critical)');
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = '<p>No notifications available.</p>';
-        }
-    }
-}
-
 // ==================== HELPER FUNCTIONS ====================
 function createRequestCard(request, showOfferButton) {
     const urgencyMap = { low: 'Low', medium: 'Moderate', high: 'Urgent' };
+    
+    // Calculate timer for urgent requests
+    let timerHtml = '';
+    if (request.urgency_level === 'high' && request.urgent_timer_start) {
+        const startTime = new Date(request.urgent_timer_start).getTime();
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 3600000 - elapsed); // 1 hour in ms
+        
+        if (remaining > 0) {
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            timerHtml = `<span class="urgent-timer" data-start="${request.urgent_timer_start}">
+                <i class="fas fa-clock"></i> ${minutes}:${seconds.toString().padStart(2, '0')}
+            </span>`;
+        }
+    }
     
     return `
         <div class="post-card">
@@ -611,6 +671,7 @@ function createRequestCard(request, showOfferButton) {
                 <span class="post-status status-${request.urgency_level === 'high' ? 'urgent' : 'open'}">
                     ${urgencyMap[request.urgency_level] || request.urgency_level}
                 </span>
+                ${timerHtml}
                 ${showOfferButton && currentUser && currentUser.role === 'volunteer' ? `
                     <div class="card-actions">
                         <button class="btn btn-primary offer-help-btn" data-request-id="${request.request_id}">
@@ -681,4 +742,288 @@ function getCategoryIcon(category) {
     return icons[category] || 'hand-holding-heart';
 }
 
+// ==================== SEARCH FUNCTIONALITY ====================
+function handleHomeSearch() {
+    const searchTerm = document.getElementById('home-search').value.trim().toLowerCase();
+    
+    if (!searchTerm) {
+        displayHomeRequests(allRequests.slice(0, 6));
+        return;
+    }
+    
+    const filtered = allRequests.filter(request => {
+        return request.title.toLowerCase().includes(searchTerm) ||
+               request.description.toLowerCase().includes(searchTerm) ||
+               (request.category && request.category.toLowerCase().includes(searchTerm)) ||
+               (request.location && request.location.toLowerCase().includes(searchTerm));
+    });
+    
+    displayHomeRequests(filtered.slice(0, 12));
+}
+
+// ==================== NOTIFICATION FUNCTIONS ====================
+let notificationPollingInterval = null;
+
+async function loadNotificationCount() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/notifications/unread-count`, {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const badge = document.getElementById('notification-badge');
+            
+            if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.log('ℹ️  Could not load notification count');
+    }
+}
+
+function startNotificationPolling() {
+    // Check every 30 seconds
+    if (notificationPollingInterval) clearInterval(notificationPollingInterval);
+    notificationPollingInterval = setInterval(loadNotificationCount, 30000);
+}
+
+async function toggleNotificationDropdown() {
+    const dropdown = document.getElementById('notification-dropdown');
+    
+    if (dropdown.classList.contains('active')) {
+        dropdown.classList.remove('active');
+        return;
+    }
+    
+    dropdown.classList.add('active');
+    await loadNotificationDropdown();
+}
+
+async function loadNotificationDropdown() {
+    try {
+        const response = await fetch(`${API_URL}/notifications`, {
+            credentials: 'include'
+        });
+        
+        const listContainer = document.getElementById('notification-list');
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.notifications && data.notifications.length > 0) {
+                listContainer.innerHTML = data.notifications.map(notif => `
+                    <div class="notification-item ${!notif.is_read ? 'unread' : ''}" data-id="${notif.notification_id}">
+                        <p>${notif.message}</p>
+                        <small>${new Date(notif.sent_date).toLocaleString()}</small>
+                    </div>
+                `).join('');
+                
+                // Add click handlers to mark as read
+                document.querySelectorAll('.notification-item.unread').forEach(item => {
+                    item.addEventListener('click', () => markNotificationRead(item.dataset.id));
+                });
+            } else {
+                listContainer.innerHTML = '<p style="padding: 1rem; text-align: center; color: var(--gray);">No notifications</p>';
+            }
+            
+            // Reload count after showing notifications
+            setTimeout(loadNotificationCount, 500);
+        }
+    } catch (error) {
+        console.error('❌ Error loading notifications:', error);
+    }
+}
+
+async function markNotificationRead(notificationId) {
+    try {
+        await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+            method: 'PATCH',
+            credentials: 'include'
+        });
+        
+        const item = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+        if (item) item.classList.remove('unread');
+        
+        loadNotificationCount();
+    } catch (error) {
+        console.error('❌ Error marking notification as read:', error);
+    }
+}
+
+// ==================== PROFILE IMAGE UPLOAD ====================
+async function handleProfileImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Image size must be less than 2MB');
+        return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const base64Image = e.target.result;
+        
+        try {
+            const response = await fetch(`${API_URL}/user/profile-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ profile_image: base64Image })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                currentUser.profile_image = data.profile_image;
+                
+                // Update all avatar displays
+                const avatarEl = document.getElementById('user-avatar');
+                avatarEl.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+                
+                const avatarLarge = document.getElementById('user-avatar-large');
+                avatarLarge.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+                
+                alert('Profile image updated successfully!');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to update profile image');
+            }
+        } catch (error) {
+            console.error('❌ Error uploading image:', error);
+            alert('Failed to upload image. Please try again.');
+        }
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function openManageAccountModal() {
+    // Update profile image preview
+    const avatarLarge = document.getElementById('user-avatar-large');
+    if (currentUser.profile_image) {
+        avatarLarge.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
+    } else {
+        const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        avatarLarge.textContent = initials.toUpperCase();
+    }
+    
+    // Update role display
+    const currentRole = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    const targetRole = currentUser.role === 'requester' ? 'Volunteer' : 'Requester';
+    
+    document.getElementById('current-role-display').textContent = currentRole;
+    document.getElementById('switch-role-target').textContent = targetRole;
+    
+    // Check cooldown
+    checkRoleSwitchCooldown();
+}
+
+async function checkRoleSwitchCooldown() {
+    const switchBtn = document.getElementById('switch-role-btn');
+    const cooldownMsg = document.getElementById('cooldown-message');
+    const cooldownText = document.getElementById('cooldown-text');
+    
+    if (!currentUser.last_role_switch) {
+        switchBtn.disabled = false;
+        cooldownMsg.style.display = 'none';
+        return;
+    }
+    
+    const lastSwitch = new Date(currentUser.last_role_switch).getTime();
+    const hoursSince = (Date.now() - lastSwitch) / (1000 * 60 * 60);
+    
+    if (hoursSince < 24) {
+        const hoursRemaining = Math.ceil(24 - hoursSince);
+        switchBtn.disabled = true;
+        cooldownMsg.style.display = 'flex';
+        cooldownText.textContent = `You can switch roles again in ${hoursRemaining} hours`;
+    } else {
+        switchBtn.disabled = false;
+        cooldownMsg.style.display = 'none';
+    }
+}
+
+async function handleRoleSwitch() {
+    if (!confirm('Are you sure you want to switch roles? You can only switch once every 24 hours.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/user/switch-role`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            currentUser.role = data.newRole;
+            currentUser.last_role_switch = new Date().toISOString();
+            
+            alert('Role switched successfully! Refreshing...');
+            document.getElementById('manage-account-modal').style.display = 'none';
+            
+            // Update UI
+            updateUIAfterLogin();
+            
+            // Navigate based on new role
+            if (data.newRole === 'requester') {
+                navigateToSection('requester-dashboard');
+                setTimeout(() => loadRequesterDashboard(), 200);
+            } else {
+                navigateToSection('browse');
+                setTimeout(() => loadBrowseRequests(), 200);
+            }
+        } else {
+            const data = await response.json();
+            alert(data.message || data.error || 'Failed to switch role');
+            
+            if (data.hoursRemaining) {
+                checkRoleSwitchCooldown();
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error switching role:', error);
+        alert('Failed to switch role. Please try again.');
+    }
+}
+
+// ==================== URGENT TIMER UPDATE ====================
+function startUrgentTimerUpdates() {
+    setInterval(() => {
+        document.querySelectorAll('.urgent-timer').forEach(timer => {
+            const startTime = new Date(timer.dataset.start).getTime();
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 3600000 - elapsed); // 1 hour
+            
+            if (remaining > 0) {
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                timer.innerHTML = `<i class="fas fa-clock"></i> ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                timer.classList.add('expired');
+                timer.innerHTML = '<i class="fas fa-clock"></i> Expired';
+            }
+        });
+    }, 1000); // Update every second
+}
+
+// Start timer updates on page load
+setTimeout(startUrgentTimerUpdates, 1000);
+
+// Make filterRequesterRequests global
+window.filterRequesterRequests = filterRequesterRequests;
 window.navigateToSection = navigateToSection;
