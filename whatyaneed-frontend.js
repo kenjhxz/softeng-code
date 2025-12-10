@@ -255,6 +255,10 @@ async function handleLogout() {
             clearInterval(notificationPollingInterval);
             notificationPollingInterval = null;
         }
+        if (urgentTimerInterval) {
+            clearInterval(urgentTimerInterval);
+            urgentTimerInterval = null;
+        }
         
         document.getElementById('user-actions').style.display = 'flex';
         document.getElementById('user-profile').style.display = 'none';
@@ -286,8 +290,12 @@ function updateUIAfterLogin() {
     
     // Update avatar with profile image or initials
     const avatarEl = document.getElementById('user-avatar');
+    avatarEl.innerHTML = ''; // Clear existing content
     if (currentUser.profile_image) {
-        avatarEl.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
+        const img = document.createElement('img');
+        img.src = currentUser.profile_image;
+        img.alt = 'Profile';
+        avatarEl.appendChild(img);
     } else {
         const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
         avatarEl.textContent = initials.toUpperCase();
@@ -774,7 +782,6 @@ function handleHomeSearch() {
 }
 
 // ==================== NOTIFICATION FUNCTIONS ====================
-let notificationPollingInterval = null;
 
 async function loadNotificationCount() {
     if (!currentUser) return;
@@ -914,12 +921,20 @@ async function handleProfileImageUpload(event) {
                 const data = await response.json();
                 currentUser.profile_image = data.profile_image;
                 
-                // Update all avatar displays
+                // Update all avatar displays safely
                 const avatarEl = document.getElementById('user-avatar');
-                avatarEl.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+                avatarEl.innerHTML = '';
+                const img1 = document.createElement('img');
+                img1.src = base64Image;
+                img1.alt = 'Profile';
+                avatarEl.appendChild(img1);
                 
                 const avatarLarge = document.getElementById('user-avatar-large');
-                avatarLarge.innerHTML = `<img src="${base64Image}" alt="Profile">`;
+                avatarLarge.innerHTML = '';
+                const img2 = document.createElement('img');
+                img2.src = base64Image;
+                img2.alt = 'Profile';
+                avatarLarge.appendChild(img2);
                 
                 alert('Profile image updated successfully!');
             } else {
@@ -936,10 +951,14 @@ async function handleProfileImageUpload(event) {
 }
 
 function openManageAccountModal() {
-    // Update profile image preview
+    // Update profile image preview safely
     const avatarLarge = document.getElementById('user-avatar-large');
+    avatarLarge.innerHTML = '';
     if (currentUser.profile_image) {
-        avatarLarge.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
+        const img = document.createElement('img');
+        img.src = currentUser.profile_image;
+        img.alt = 'Profile';
+        avatarLarge.appendChild(img);
     } else {
         const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
         avatarLarge.textContent = initials.toUpperCase();
@@ -1038,13 +1057,20 @@ function startUrgentTimerUpdates() {
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, URGENT_TIMER_DURATION_MS - elapsed);
             
+            timer.innerHTML = ''; // Clear existing content
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-clock';
+            timer.appendChild(icon);
+            
             if (remaining > 0) {
                 const minutes = Math.floor(remaining / 60000);
                 const seconds = Math.floor((remaining % 60000) / 1000);
-                timer.innerHTML = `<i class="fas fa-clock"></i> ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                const timeText = document.createTextNode(` ${minutes}:${seconds.toString().padStart(2, '0')}`);
+                timer.appendChild(timeText);
             } else {
                 timer.classList.add('expired');
-                timer.innerHTML = '<i class="fas fa-clock"></i> Expired';
+                const expiredText = document.createTextNode(' Expired');
+                timer.appendChild(expiredText);
             }
         });
     }, 1000); // Update every second

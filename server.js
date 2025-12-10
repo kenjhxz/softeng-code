@@ -498,9 +498,15 @@ app.post('/api/user/profile-image', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'Invalid image format. Must be a base64 image.' });
         }
         
-        // Check size (approximately 2MB in base64, accounting for ~33% overhead)
-        const base64Length = profile_image.length;
-        const sizeInBytes = (base64Length * 3) / 4;
+        // Extract base64 data (remove data URL prefix)
+        const base64Data = profile_image.split(',')[1];
+        if (!base64Data) {
+            return res.status(400).json({ error: 'Invalid base64 image data' });
+        }
+        
+        // Calculate actual size: base64 length * 3/4, minus padding
+        const padding = (base64Data.match(/=/g) || []).length;
+        const sizeInBytes = (base64Data.length * 3) / 4 - padding;
         const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
         
         if (sizeInBytes > maxSizeInBytes) {
