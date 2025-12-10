@@ -341,6 +341,19 @@ nav ul li a:hover {
     border-radius: 8px;
     box-shadow: var(--card-shadow);
     text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    background-color: rgba(67, 97, 238, 0.02);
+}
+
+.dashboard-card.active {
+    background-color: rgba(67, 97, 238, 0.1);
+    border: 2px solid var(--primary);
 }
 
 .dashboard-card i {
@@ -352,6 +365,10 @@ nav ul li a:hover {
 .dashboard-card h3 {
     margin-bottom: 0.5rem;
     color: var(--secondary);
+}
+
+.dashboard-filter-section {
+    margin-top: 2rem;
 }
 
 /* Notifications */
@@ -478,6 +495,7 @@ footer {
     display: flex;
     align-items: center;
     color: white;
+    gap: 1rem;
 }
 
 .user-avatar {
@@ -490,6 +508,13 @@ footer {
     justify-content: center;
     margin-right: 0.75rem;
     font-weight: bold;
+    overflow: hidden;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .user-info {
@@ -500,6 +525,223 @@ footer {
 .user-role {
     font-size: 0.8rem;
     opacity: 0.8;
+}
+
+/* Notification Bell */
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.notification-bell:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.notification-bell i {
+    font-size: 1.3rem;
+    color: white;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--warning);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.notification-dropdown {
+    position: absolute;
+    top: 110%;
+    right: 0;
+    width: 350px;
+    max-height: 400px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    display: none;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.notification-dropdown.active {
+    display: flex;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.notification-header h4 {
+    margin: 0;
+    color: var(--dark);
+}
+
+.mark-all-read {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.mark-all-read:hover {
+    text-decoration: underline;
+}
+
+.notification-list {
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.notification-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--light-gray);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.notification-item:hover {
+    background-color: var(--light);
+}
+
+.notification-item.unread {
+    background-color: #fff9f9;
+    border-left: 3px solid var(--warning);
+}
+
+.notification-item p {
+    margin: 0 0 0.25rem 0;
+    color: var(--dark);
+    font-size: 0.9rem;
+}
+
+.notification-item small {
+    color: var(--gray);
+    font-size: 0.8rem;
+}
+
+/* Profile Image Upload */
+.profile-image-container {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem 0;
+}
+
+.profile-image-preview {
+    flex-shrink: 0;
+}
+
+.user-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: var(--success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    overflow: hidden;
+}
+
+.user-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-image-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.help-text {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin: 0;
+}
+
+/* Role Switch */
+.role-switch-container {
+    padding: 1rem 0;
+}
+
+.role-switch-container p {
+    margin-bottom: 1rem;
+}
+
+.cooldown-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #fff3cd;
+    color: #856404;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cooldown-message i {
+    color: #856404;
+}
+
+/* Account Section */
+.account-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.account-section:last-child {
+    border-bottom: none;
+}
+
+.account-section h3 {
+    margin-bottom: 1rem;
+    color: var(--secondary);
+}
+
+/* Urgent Timer */
+.urgent-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+.urgent-timer i {
+    font-size: 0.9rem;
+}
+
+.urgent-timer.expired {
+    background-color: #e9ecef;
+    color: var(--gray);
 }
 
 /* Action buttons on cards */

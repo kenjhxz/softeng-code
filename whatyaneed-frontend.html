@@ -29,12 +29,26 @@
                     <button class="btn btn-primary" id="register-btn">Register</button>
                 </div>
                 <div class="user-profile" id="user-profile" style="display: none;">
+                    <div class="notification-bell" id="notification-bell">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                        <div class="notification-dropdown" id="notification-dropdown">
+                            <div class="notification-header">
+                                <h4>Notifications</h4>
+                                <button class="mark-all-read" id="mark-all-read">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <p>No notifications</p>
+                            </div>
+                        </div>
+                    </div>
                     <div class="user-avatar" id="user-avatar">JD</div>
                     <div class="user-info">
                         <span id="user-name">John Doe</span>
                         <span class="user-role" id="user-role">Volunteer</span>
                     </div>
-                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 1rem;">Logout</button>
+                    <button class="btn btn-outline" id="manage-account-btn" style="margin-left: 1rem;">Manage Account</button>
+                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 0.5rem;">Logout</button>
                 </div>
             </div>
         </div>
@@ -71,13 +85,11 @@
             <section id="requester-dashboard" class="page-section">
                 <h2>Requester Dashboard</h2>
                 <div class="dashboard-cards" id="requester-stats"></div>
-                <h3>Your Active Requests</h3>
-                <div class="posts-grid" id="requester-requests-grid">
-                    <p>Loading your requests...</p>
-                </div>
-                <h3>Recent Notifications</h3>
-                <div class="notifications" id="requester-notifications">
-                    <p>Loading notifications...</p>
+                <div class="dashboard-filter-section">
+                    <h3 id="filter-title">Your Active Requests</h3>
+                    <div class="posts-grid" id="filtered-content">
+                        <p>Loading your requests...</p>
+                    </div>
                 </div>
             </section>
 
@@ -88,10 +100,6 @@
                 <h3>Your Active Offers</h3>
                 <div class="posts-grid" id="volunteer-offers-grid">
                     <p>Loading your offers...</p>
-                </div>
-                <h3>Recent Notifications</h3>
-                <div class="notifications" id="volunteer-notifications">
-                    <p>Loading notifications...</p>
                 </div>
             </section>
 
@@ -196,6 +204,43 @@
                     Already have an account? <a href="#" id="switch-to-login" style="color: var(--primary);">Login now</a>
                 </p>
             </form>
+        </div>
+    </div>
+
+    <!-- Manage Account Modal -->
+    <div class="modal" id="manage-account-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-manage-account">&times;</span>
+            <h2 class="form-title">Manage Account</h2>
+            
+            <div class="account-section">
+                <h3>Profile Picture</h3>
+                <div class="profile-image-container">
+                    <div class="profile-image-preview" id="profile-image-preview">
+                        <div class="user-avatar-large" id="user-avatar-large">JD</div>
+                    </div>
+                    <div class="profile-image-upload">
+                        <input type="file" id="profile-image-input" accept="image/*" style="display: none;">
+                        <button class="btn btn-primary" id="upload-image-btn">Choose Image</button>
+                        <p class="help-text">Upload a profile picture (max 2MB)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-section">
+                <h3>Switch Role</h3>
+                <div class="role-switch-container">
+                    <p>Current Role: <strong id="current-role-display">Requester</strong></p>
+                    <button class="btn btn-primary" id="switch-role-btn">
+                        Switch to <span id="switch-role-target">Volunteer</span>
+                    </button>
+                    <div id="cooldown-message" class="cooldown-message" style="display: none;">
+                        <i class="fas fa-clock"></i>
+                        <span id="cooldown-text"></span>
+                    </div>
+                    <p class="help-text">You can switch roles once every 24 hours</p>
+                </div>
+            </div>
         </div>
     </div>
 

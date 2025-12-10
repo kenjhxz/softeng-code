@@ -19,6 +19,8 @@ CREATE TABLE users (
     location VARCHAR(255),
     role ENUM('requester', 'volunteer', 'admin') NOT NULL,
     verified BOOLEAN DEFAULT FALSE,
+    profile_image TEXT,
+    last_role_switch DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,6 +35,7 @@ CREATE TABLE requests (
     location VARCHAR(255),
     status ENUM('open', 'help_offered', 'closed') DEFAULT 'open',
     posted_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    urgent_timer_start DATETIME,
     FOREIGN KEY (requester_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
