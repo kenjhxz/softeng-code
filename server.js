@@ -210,7 +210,9 @@ app.post('/api/auth/login', async (req, res) => {
             email: user.email,
             role: user.role,
             location: user.location,
-            verified: user.verified
+            verified: user.verified,
+            profile_image: user.profile_image,
+            last_role_switch: user.last_role_switch
         };
 
         // CRITICAL: Explicitly save the session and WAIT for it
@@ -260,6 +262,15 @@ app.get('/api/auth/me', isAuthenticated, (req, res) => {
 
 app.get('/api/requests', async (req, res) => {
     try {
+        // First, check and update expired urgent timers
+        await pool.query(`
+            UPDATE requests 
+            SET urgency_level = 'medium' 
+            WHERE urgency_level = 'high' 
+            AND urgent_timer_start IS NOT NULL 
+            AND TIMESTAMPDIFF(HOUR, urgent_timer_start, NOW()) >= 1
+        `);
+
         const { category, urgency, location, search } = req.query;
         
         let query = `
@@ -306,10 +317,13 @@ app.post('/api/requests', isAuthenticated, hasRole('requester'), async (req, res
             return res.status(400).json({ error: 'Title and description required' });
         }
 
+        // Set urgent_timer_start for high urgency requests
+        const urgent_timer_start = urgency_level === 'high' ? new Date() : null;
+
         const [result] = await pool.query(
-            `INSERT INTO requests (requester_id, title, description, category, urgency_level, location, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'open')`,
-            [requester_id, title, description, category, urgency_level, location]
+            `INSERT INTO requests (requester_id, title, description, category, urgency_level, location, status, urgent_timer_start)
+             VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
+            [requester_id, title, description, category, urgency_level, location, urgent_timer_start]
         );
 
         console.log('✅ Request created:', result.insertId);
@@ -432,6 +446,143 @@ app.get('/api/notifications', async (req, res) => {
     } catch (error) {
         console.error('❌ Get notifications error:', error);
         res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+});
+
+// Get unread notification count
+app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as count FROM notifications WHERE recipient_id = ? AND is_read = FALSE',
+            [req.session.user.id]
+        );
+        
+        res.json({ count: result[0].count });
+    } catch (error) {
+        console.error('❌ Get unread count error:', error);
+        res.status(500).json({ error: 'Failed to fetch unread count' });
+    }
+});
+
+// Mark notification as read
+app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await pool.query(
+            'UPDATE notifications SET is_read = TRUE WHERE notification_id = ? AND recipient_id = ?',
+            [id, req.session.user.id]
+        );
+        
+        console.log('✅ Notification marked as read:', id);
+        res.json({ message: 'Notification marked as read' });
+    } catch (error) {
+        console.error('❌ Mark notification read error:', error);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+});
+
+// ==================== USER PROFILE ROUTES ====================
+
+// Upload profile image
+app.post('/api/user/profile-image', isAuthenticated, async (req, res) => {
+    try {
+        const { profile_image } = req.body;
+        
+        if (!profile_image) {
+            return res.status(400).json({ error: 'Profile image required' });
+        }
+        
+        // Validate base64 format
+        if (!profile_image.startsWith('data:image/')) {
+            return res.status(400).json({ error: 'Invalid image format. Must be a base64 image.' });
+        }
+        
+        // Extract base64 data (remove data URL prefix)
+        const base64Data = profile_image.split(',')[1];
+        if (!base64Data) {
+            return res.status(400).json({ error: 'Invalid base64 image data' });
+        }
+        
+        // Calculate actual size: base64 length * 3/4, minus padding
+        const padding = (base64Data.match(/=/g) || []).length;
+        const sizeInBytes = (base64Data.length * 3) / 4 - padding;
+        const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
+        
+        if (sizeInBytes > maxSizeInBytes) {
+            return res.status(400).json({ error: 'Image size exceeds 2MB limit' });
+        }
+        
+        await pool.query(
+            'UPDATE users SET profile_image = ? WHERE user_id = ?',
+            [profile_image, req.session.user.id]
+        );
+        
+        // Update session
+        req.session.user.profile_image = profile_image;
+        
+        console.log('✅ Profile image updated for user:', req.session.user.id);
+        res.json({ 
+            message: 'Profile image updated successfully',
+            profile_image 
+        });
+    } catch (error) {
+        console.error('❌ Profile image update error:', error);
+        res.status(500).json({ error: 'Failed to update profile image' });
+    }
+});
+
+// Switch user role
+app.post('/api/user/switch-role', isAuthenticated, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const currentRole = req.session.user.role;
+        
+        // Admin cannot switch roles
+        if (currentRole === 'admin') {
+            return res.status(403).json({ error: 'Admins cannot switch roles' });
+        }
+        
+        // Check last role switch timestamp
+        const [users] = await pool.query(
+            'SELECT last_role_switch FROM users WHERE user_id = ?',
+            [userId]
+        );
+        
+        const lastSwitch = users[0].last_role_switch;
+        
+        if (lastSwitch) {
+            const hoursSinceSwitch = (Date.now() - new Date(lastSwitch).getTime()) / (1000 * 60 * 60);
+            
+            if (hoursSinceSwitch < 24) {
+                const hoursRemaining = Math.ceil(24 - hoursSinceSwitch);
+                return res.status(400).json({ 
+                    error: 'Role switch cooldown active',
+                    hoursRemaining,
+                    message: `You can switch roles again in ${hoursRemaining} hours`
+                });
+            }
+        }
+        
+        // Switch role
+        const newRole = currentRole === 'requester' ? 'volunteer' : 'requester';
+        
+        await pool.query(
+            'UPDATE users SET role = ?, last_role_switch = NOW() WHERE user_id = ?',
+            [newRole, userId]
+        );
+        
+        // Update session
+        req.session.user.role = newRole;
+        
+        console.log('✅ Role switched for user:', userId, 'from', currentRole, 'to', newRole);
+        res.json({ 
+            message: 'Role switched successfully',
+            newRole
+        });
+    } catch (error) {
+        console.error('❌ Role switch error:', error);
+        res.status(500).json({ error: 'Failed to switch role' });
     }
 });
 
