@@ -29,12 +29,43 @@
                     <button class="btn btn-primary" id="register-btn">Register</button>
                 </div>
                 <div class="user-profile" id="user-profile" style="display: none;">
-                    <div class="user-avatar" id="user-avatar">JD</div>
-                    <div class="user-info">
-                        <span id="user-name">John Doe</span>
-                        <span class="user-role" id="user-role">Volunteer</span>
+                    <!-- Notification Bell -->
+                    <div class="notification-bell" id="notification-bell">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                        <div class="notification-dropdown" id="notification-dropdown">
+                            <div class="notification-header">
+                                <h4>Notifications</h4>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <p class="no-notifications">No new notifications</p>
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 1rem;">Logout</button>
+                    
+                    <!-- Profile Dropdown Trigger -->
+                    <div class="profile-trigger" id="profile-trigger">
+                        <div class="user-avatar" id="user-avatar">JD</div>
+                        <div class="user-info">
+                            <span id="user-name">John Doe</span>
+                            <span class="user-role" id="user-role">Volunteer</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    
+                    <!-- Profile Dropdown Menu -->
+                    <div class="profile-dropdown" id="profile-dropdown">
+                        <a href="#" class="dropdown-item" id="view-profile-link">
+                            <i class="fas fa-user"></i> View Profile
+                        </a>
+                        <a href="#" class="dropdown-item" id="manage-account-link">
+                            <i class="fas fa-cog"></i> Manage Account
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" id="logout-link">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,6 +165,125 @@
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
                     </form>
+                </div>
+            </section>
+
+            <!-- View Profile Section -->
+            <section id="view-profile" class="page-section">
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <div class="profile-avatar-large" id="profile-avatar-large">JD</div>
+                        <h2 id="profile-display-name">John Doe</h2>
+                        <span class="profile-role-badge" id="profile-role-badge">Volunteer</span>
+                    </div>
+                    <div class="profile-card">
+                        <h3>Profile Information</h3>
+                        <div class="profile-info-grid">
+                            <div class="profile-info-item">
+                                <label>Full Name</label>
+                                <p id="profile-info-name">John Doe</p>
+                            </div>
+                            <div class="profile-info-item">
+                                <label>Email</label>
+                                <p id="profile-info-email">john@example.com</p>
+                            </div>
+                            <div class="profile-info-item">
+                                <label>Role</label>
+                                <p id="profile-info-role">Volunteer</p>
+                            </div>
+                            <div class="profile-info-item">
+                                <label>Location</label>
+                                <p id="profile-info-location">Not specified</p>
+                            </div>
+                            <div class="profile-info-item">
+                                <label>Account Status</label>
+                                <p id="profile-info-status">Active</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="goto-manage-account" style="margin-top: 1.5rem;">
+                            <i class="fas fa-cog"></i> Manage Account
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manage Account Section -->
+            <section id="manage-account" class="page-section">
+                <div class="form-container" style="max-width: 800px;">
+                    <h2 class="form-title">Manage Account</h2>
+                    
+                    <!-- Update Profile Section -->
+                    <div class="account-section">
+                        <h3><i class="fas fa-user-edit"></i> Update Profile</h3>
+                        <form id="update-profile-form">
+                            <div class="form-group">
+                                <label for="profile-name">Full Name *</label>
+                                <input type="text" id="profile-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-location">Location</label>
+                                <input type="text" id="profile-location" placeholder="Your city or area">
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Change Password Section -->
+                    <div class="account-section">
+                        <h3><i class="fas fa-lock"></i> Change Password</h3>
+                        <form id="change-password-form">
+                            <div class="form-group">
+                                <label for="current-password">Current Password *</label>
+                                <input type="password" id="current-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password *</label>
+                                <input type="password" id="new-password" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-new-password">Confirm New Password *</label>
+                                <input type="password" id="confirm-new-password" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-key"></i> Update Password
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Profile Image Upload Section -->
+                    <div class="account-section">
+                        <h3><i class="fas fa-image"></i> Profile Image</h3>
+                        <div class="profile-image-upload">
+                            <div class="image-preview" id="image-preview">
+                                <div class="avatar-preview" id="avatar-preview">JD</div>
+                            </div>
+                            <div class="upload-controls">
+                                <input type="file" id="profile-image-input" accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-outline" id="select-image-btn">
+                                    <i class="fas fa-upload"></i> Choose Image
+                                </button>
+                                <button type="button" class="btn btn-primary" id="upload-image-btn" disabled>
+                                    <i class="fas fa-check"></i> Upload
+                                </button>
+                                <p class="upload-hint">Max size: 2MB. Formats: JPG, PNG, GIF</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Switch Role Section -->
+                    <div class="account-section">
+                        <h3><i class="fas fa-exchange-alt"></i> Switch Role</h3>
+                        <p>Switch between Requester and Volunteer roles. Note: You can only switch once every 24 hours.</p>
+                        <div class="role-switch-info">
+                            <p><strong>Current Role:</strong> <span id="current-role-display">Volunteer</span></p>
+                            <p id="cooldown-message" style="display: none; color: var(--warning);"></p>
+                        </div>
+                        <button type="button" class="btn btn-warning" id="switch-role-btn">
+                            <i class="fas fa-exchange-alt"></i> Switch to <span id="target-role">Requester</span>
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>
