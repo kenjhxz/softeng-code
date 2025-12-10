@@ -361,6 +361,7 @@ app.post('/api/user/profile-image', isAuthenticated, async (req, res) => {
         }
 
         // Validate base64 image size (approximately 2MB limit)
+        // Note: The 0.75 factor assumes pure base64 content without data URL prefix
         const base64Size = imageData.length * 0.75; // Approximate size in bytes
         if (base64Size > 2 * 1024 * 1024) {
             return res.status(400).json({ error: 'Image size exceeds 2MB limit' });

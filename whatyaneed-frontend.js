@@ -183,10 +183,10 @@ function initializeEventListeners() {
         if (e.target === loginModal) loginModal.style.display = 'none';
         if (e.target === registerModal) registerModal.style.display = 'none';
         
-        if (profileDropdown && !profileTrigger.contains(e.target)) {
+        if (profileDropdown && profileTrigger && !profileTrigger.contains(e.target)) {
             profileDropdown.classList.remove('show');
         }
-        if (notificationDropdown && !notificationBell.contains(e.target)) {
+        if (notificationDropdown && notificationBell && !notificationBell.contains(e.target)) {
             notificationDropdown.classList.remove('show');
         }
     });
@@ -393,8 +393,7 @@ function updateAvatars() {
             if (currentUser.profile_image) {
                 element.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
             } else {
-                element.textContent = initials;
-                element.innerHTML = initials; // Clear any existing images
+                element.innerHTML = initials; // Clear any existing images and show initials
             }
         }
     });
@@ -1218,8 +1217,8 @@ function addUrgentTimers() {
         if (urgencyElement) {
             const requestId = card.querySelector('.offer-help-btn')?.dataset.requestId;
             if (requestId) {
-                // In a real implementation, we'd get the timer start from the request data
-                // For now, we'll show a placeholder
+                // TODO: Implement full timer functionality when urgent_timer_start is populated in database
+                // For now, display a static indicator for urgent requests
                 const timerHTML = `
                     <div class="urgent-timer">
                         <i class="fas fa-clock"></i>
