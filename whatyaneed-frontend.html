@@ -29,12 +29,29 @@
                     <button class="btn btn-primary" id="register-btn">Register</button>
                 </div>
                 <div class="user-profile" id="user-profile" style="display: none;">
-                    <div class="user-avatar" id="user-avatar">JD</div>
-                    <div class="user-info">
-                        <span id="user-name">John Doe</span>
-                        <span class="user-role" id="user-role">Volunteer</span>
+                    <div class="user-profile-trigger">
+                        <div class="user-avatar" id="user-avatar">JD</div>
+                        <div class="user-info">
+                            <span id="user-name">John Doe</span>
+                            <span class="user-role" id="user-role">Volunteer</span>
+                        </div>
+                        <i class="fas fa-chevron-down" id="profile-dropdown-icon"></i>
                     </div>
-                    <button class="btn btn-outline" id="logout-btn" style="margin-left: 1rem;">Logout</button>
+                    <!-- Profile Dropdown Menu -->
+                    <div class="profile-dropdown" id="profile-dropdown" style="display: none;">
+                        <a href="#" class="dropdown-item" id="view-profile-link">
+                            <i class="fas fa-user"></i>
+                            <span>View Profile</span>
+                        </a>
+                        <a href="#" class="dropdown-item" id="manage-account-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Manage Account</span>
+                        </a>
+                        <a href="#" class="dropdown-item" id="dropdown-logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -196,6 +213,94 @@
                     Already have an account? <a href="#" id="switch-to-login" style="color: var(--primary);">Login now</a>
                 </p>
             </form>
+        </div>
+    </div>
+
+    <!-- View Profile Modal -->
+    <div class="modal" id="view-profile-modal">
+        <div class="modal-content profile-modal">
+            <span class="close-modal" id="close-view-profile">&times;</span>
+            <div class="profile-header">
+                <div class="profile-avatar-large" id="profile-avatar-large">JD</div>
+                <h2 id="profile-name-display">John Doe</h2>
+                <span class="profile-role-badge" id="profile-role-badge">Requester</span>
+            </div>
+            <div class="profile-info-section">
+                <h3>Profile Information</h3>
+                <div class="profile-info-grid">
+                    <div class="profile-info-item">
+                        <label>Full Name</label>
+                        <p id="profile-fullname">John Doe</p>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Email</label>
+                        <p id="profile-email">john@example.com</p>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Role</label>
+                        <p id="profile-role-display">Requester</p>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Location</label>
+                        <p id="profile-location">Not specified</p>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Account Status</label>
+                        <p id="profile-status">Pending Verification</p>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="goto-manage-account" style="width: 100%; margin-top: 1rem;">
+                <i class="fas fa-cog"></i> Manage Account
+            </button>
+        </div>
+    </div>
+
+    <!-- Manage Account Modal -->
+    <div class="modal" id="manage-account-modal">
+        <div class="modal-content manage-account-modal">
+            <span class="close-modal" id="close-manage-account">&times;</span>
+            <h2 class="form-title"><i class="fas fa-cog"></i> Manage Account</h2>
+            
+            <!-- Update Profile Section -->
+            <div class="manage-section">
+                <h3><i class="fas fa-user-edit"></i> Update Profile</h3>
+                <form id="update-profile-form">
+                    <div class="form-group">
+                        <label for="update-name">Full Name</label>
+                        <input type="text" id="update-name" required placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="update-location">Location</label>
+                        <input type="text" id="update-location" placeholder="Your city or area">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+
+            <!-- Change Password Section -->
+            <div class="manage-section">
+                <h3><i class="fas fa-lock"></i> Change Password</h3>
+                <form id="change-password-form">
+                    <div class="form-group">
+                        <label for="current-password">Current Password</label>
+                        <input type="password" id="current-password" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">New Password</label>
+                        <input type="password" id="new-password" required placeholder="Enter new password (min 6 characters)" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-password">Confirm New Password</label>
+                        <input type="password" id="confirm-password" required placeholder="Confirm new password" minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-key"></i> Update Password
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 

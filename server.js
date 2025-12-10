@@ -435,6 +435,88 @@ app.get('/api/notifications', async (req, res) => {
     }
 });
 
+// ==================== USER PROFILE ROUTES ====================
+
+app.patch('/api/user/profile', isAuthenticated, async (req, res) => {
+    try {
+        const { name, location } = req.body;
+        const userId = req.session.user.id;
+
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+
+        await pool.query(
+            'UPDATE users SET name = ?, location = ? WHERE user_id = ?',
+            [name, location || null, userId]
+        );
+
+        // Update session data
+        req.session.user.name = name;
+        req.session.user.location = location;
+
+        await new Promise((resolve, reject) => {
+            req.session.save((err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        console.log('✅ Profile updated for user:', userId);
+        res.json({
+            message: 'Profile updated successfully',
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('❌ Update profile error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+app.post('/api/user/change-password', isAuthenticated, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.session.user.id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current and new passwords are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters' });
+        }
+
+        // Get current password hash from database
+        const [users] = await pool.query(
+            'SELECT password FROM users WHERE user_id = ?',
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Verify current password
+        const validPassword = await bcrypt.compare(currentPassword, users[0].password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+
+        // Hash and update new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query(
+            'UPDATE users SET password = ? WHERE user_id = ?',
+            [hashedPassword, userId]
+        );
+
+        console.log('✅ Password changed for user:', userId);
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('❌ Change password error:', error);
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+
 // ==================== ERROR HANDLERS ====================
 
 app.use((req, res) => {
