@@ -28,6 +28,24 @@ function initializeEventListeners() {
     const requestForm = document.getElementById('request-form');
     const logoutBtn = document.getElementById('logout-btn');
 
+    // Profile dropdown elements
+    const userProfileTrigger = document.querySelector('.user-profile-trigger');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    const viewProfileLink = document.getElementById('view-profile-link');
+    const manageAccountLink = document.getElementById('manage-account-link');
+    const dropdownLogoutBtn = document.getElementById('dropdown-logout-btn');
+    
+    // Modal elements
+    const viewProfileModal = document.getElementById('view-profile-modal');
+    const manageAccountModal = document.getElementById('manage-account-modal');
+    const closeViewProfile = document.getElementById('close-view-profile');
+    const closeManageAccount = document.getElementById('close-manage-account');
+    const gotoManageAccount = document.getElementById('goto-manage-account');
+    
+    // Form elements
+    const updateProfileForm = document.getElementById('update-profile-form');
+    const changePasswordForm = document.getElementById('change-password-form');
+
     loginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
     registerBtn.addEventListener('click', () => registerModal.style.display = 'flex');
     closeLogin.addEventListener('click', () => loginModal.style.display = 'none');
@@ -45,7 +63,68 @@ function initializeEventListeners() {
         loginModal.style.display = 'flex';
     });
 
-    logoutBtn.addEventListener('click', handleLogout);
+    // Profile dropdown toggle
+    if (userProfileTrigger) {
+        userProfileTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleProfileDropdown();
+        });
+    }
+
+    // Profile dropdown menu items
+    if (viewProfileLink) {
+        viewProfileLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showViewProfile();
+            profileDropdown.style.display = 'none';
+        });
+    }
+
+    if (manageAccountLink) {
+        manageAccountLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showManageAccount();
+            profileDropdown.style.display = 'none';
+        });
+    }
+
+    if (dropdownLogoutBtn) {
+        dropdownLogoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleLogout();
+            profileDropdown.style.display = 'none';
+        });
+    }
+
+    // Keep old logout button for backward compatibility
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
+    // Modal close buttons
+    if (closeViewProfile) {
+        closeViewProfile.addEventListener('click', () => viewProfileModal.style.display = 'none');
+    }
+
+    if (closeManageAccount) {
+        closeManageAccount.addEventListener('click', () => manageAccountModal.style.display = 'none');
+    }
+
+    if (gotoManageAccount) {
+        gotoManageAccount.addEventListener('click', () => {
+            viewProfileModal.style.display = 'none';
+            showManageAccount();
+        });
+    }
+
+    // Form submissions
+    if (updateProfileForm) {
+        updateProfileForm.addEventListener('submit', handleUpdateProfile);
+    }
+
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', handleChangePassword);
+    }
 
     document.querySelectorAll('.user-type').forEach(type => {
         type.addEventListener('click', function() {
@@ -67,13 +146,153 @@ function initializeEventListeners() {
         });
     });
 
+    // Close dropdown and modals when clicking outside
     window.addEventListener('click', function(e) {
         if (e.target === loginModal) loginModal.style.display = 'none';
         if (e.target === registerModal) registerModal.style.display = 'none';
+        if (e.target === viewProfileModal) viewProfileModal.style.display = 'none';
+        if (e.target === manageAccountModal) manageAccountModal.style.display = 'none';
+        
+        // Close dropdown if clicking outside
+        const profileElement = document.getElementById('user-profile');
+        if (profileDropdown && !profileElement.contains(e.target)) {
+            profileDropdown.style.display = 'none';
+        }
     });
 }
 
 // ==================== AUTH FUNCTIONS ====================
+// Profile Dropdown Functions
+function toggleProfileDropdown() {
+    const dropdown = document.getElementById('profile-dropdown');
+    if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.style.display = 'none';
+    }
+}
+
+function showViewProfile() {
+    if (!currentUser) return;
+    
+    // Update profile modal with current user data
+    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('profile-avatar-large').textContent = initials;
+    document.getElementById('profile-name-display').textContent = currentUser.name;
+    document.getElementById('profile-role-badge').textContent = 
+        currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    document.getElementById('profile-fullname').textContent = currentUser.name;
+    document.getElementById('profile-email').textContent = currentUser.email;
+    document.getElementById('profile-role-display').textContent = 
+        currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    document.getElementById('profile-location').textContent = currentUser.location || 'Not specified';
+    document.getElementById('profile-status').textContent = 
+        currentUser.verified ? 'Verified' : 'Pending Verification';
+    
+    document.getElementById('view-profile-modal').style.display = 'flex';
+}
+
+function showManageAccount() {
+    if (!currentUser) return;
+    
+    // Pre-fill the update profile form
+    document.getElementById('update-name').value = currentUser.name;
+    document.getElementById('update-location').value = currentUser.location || '';
+    
+    // Clear password fields
+    document.getElementById('current-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+    
+    document.getElementById('manage-account-modal').style.display = 'flex';
+}
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('update-name').value;
+    const location = document.getElementById('update-location').value;
+    
+    try {
+        console.log('📝 Updating profile...');
+        
+        const response = await fetch(`${API_URL}/user/profile`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, location })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Profile updated');
+            alert('Profile updated successfully!');
+            
+            // Update current user data
+            currentUser.name = name;
+            currentUser.location = location;
+            
+            // Update UI
+            updateUIAfterLogin();
+            
+            // Close modal
+            document.getElementById('manage-account-modal').style.display = 'none';
+        } else {
+            console.error('❌ Profile update failed:', data.error);
+            alert(data.error || 'Failed to update profile.');
+        }
+    } catch (error) {
+        console.error('❌ Error updating profile:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert("New passwords don't match!");
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert("New password must be at least 6 characters long!");
+        return;
+    }
+    
+    try {
+        console.log('🔑 Changing password...');
+        
+        const response = await fetch(`${API_URL}/user/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Password changed');
+            alert('Password changed successfully!');
+            
+            // Clear form
+            document.getElementById('change-password-form').reset();
+        } else {
+            console.error('❌ Password change failed:', data.error);
+            alert(data.error || 'Failed to change password.');
+        }
+    } catch (error) {
+        console.error('❌ Error changing password:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
 async function checkAuthStatus() {
     try {
         console.log('🔍 Checking authentication status...');
