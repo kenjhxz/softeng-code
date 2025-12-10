@@ -3,6 +3,9 @@ const API_URL = 'http://localhost:3000/api';
 
 let currentUser = null;
 let allRequests = [];
+let notificationPollingInterval = null;
+let selectedFilter = null; // For dashboard card filtering
+let selectedImageFile = null; // For profile image upload
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,7 +29,28 @@ function initializeEventListeners() {
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const requestForm = document.getElementById('request-form');
-    const logoutBtn = document.getElementById('logout-btn');
+
+    // Profile dropdown and notification bell
+    const profileTrigger = document.getElementById('profile-trigger');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    const notificationBell = document.getElementById('notification-bell');
+    const notificationDropdown = document.getElementById('notification-dropdown');
+    const viewProfileLink = document.getElementById('view-profile-link');
+    const manageAccountLink = document.getElementById('manage-account-link');
+    const logoutLink = document.getElementById('logout-link');
+    const gotoManageAccount = document.getElementById('goto-manage-account');
+
+    // Manage account forms
+    const updateProfileForm = document.getElementById('update-profile-form');
+    const changePasswordForm = document.getElementById('change-password-form');
+    const selectImageBtn = document.getElementById('select-image-btn');
+    const profileImageInput = document.getElementById('profile-image-input');
+    const uploadImageBtn = document.getElementById('upload-image-btn');
+    const switchRoleBtn = document.getElementById('switch-role-btn');
+
+    // Search bar
+    const homeSearch = document.getElementById('home-search');
+    const homeSearchBtn = document.getElementById('home-search-btn');
 
     loginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
     registerBtn.addEventListener('click', () => registerModal.style.display = 'flex');
@@ -45,7 +69,94 @@ function initializeEventListeners() {
         loginModal.style.display = 'flex';
     });
 
-    logoutBtn.addEventListener('click', handleLogout);
+    // Profile dropdown toggle
+    if (profileTrigger) {
+        profileTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('show');
+            notificationDropdown.classList.remove('show');
+        });
+    }
+
+    // Notification bell toggle
+    if (notificationBell) {
+        notificationBell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationDropdown.classList.toggle('show');
+            profileDropdown.classList.remove('show');
+            if (notificationDropdown.classList.contains('show')) {
+                loadNotificationsDropdown();
+            }
+        });
+    }
+
+    // Profile navigation
+    if (viewProfileLink) {
+        viewProfileLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateToSection('view-profile');
+            profileDropdown.classList.remove('show');
+        });
+    }
+
+    if (manageAccountLink) {
+        manageAccountLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateToSection('manage-account');
+            profileDropdown.classList.remove('show');
+        });
+    }
+
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleLogout();
+        });
+    }
+
+    if (gotoManageAccount) {
+        gotoManageAccount.addEventListener('click', () => {
+            navigateToSection('manage-account');
+        });
+    }
+
+    // Manage account forms
+    if (updateProfileForm) {
+        updateProfileForm.addEventListener('submit', handleUpdateProfile);
+    }
+
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', handleChangePassword);
+    }
+
+    // Profile image upload
+    if (selectImageBtn) {
+        selectImageBtn.addEventListener('click', () => {
+            profileImageInput.click();
+        });
+    }
+
+    if (profileImageInput) {
+        profileImageInput.addEventListener('change', handleImageSelect);
+    }
+
+    if (uploadImageBtn) {
+        uploadImageBtn.addEventListener('click', handleImageUpload);
+    }
+
+    // Role switch
+    if (switchRoleBtn) {
+        switchRoleBtn.addEventListener('click', handleRoleSwitch);
+    }
+
+    // Search functionality
+    if (homeSearch) {
+        homeSearch.addEventListener('input', handleSearch);
+    }
+
+    if (homeSearchBtn) {
+        homeSearchBtn.addEventListener('click', handleSearch);
+    }
 
     document.querySelectorAll('.user-type').forEach(type => {
         type.addEventListener('click', function() {
@@ -67,9 +178,17 @@ function initializeEventListeners() {
         });
     });
 
+    // Click outside to close dropdowns
     window.addEventListener('click', function(e) {
         if (e.target === loginModal) loginModal.style.display = 'none';
         if (e.target === registerModal) registerModal.style.display = 'none';
+        
+        if (profileDropdown && profileTrigger && !profileTrigger.contains(e.target)) {
+            profileDropdown.classList.remove('show');
+        }
+        if (notificationDropdown && notificationBell && !notificationBell.contains(e.target)) {
+            notificationDropdown.classList.remove('show');
+        }
     });
 }
 
@@ -204,6 +323,12 @@ async function handleLogout() {
         
         currentUser = null;
         
+        // Stop notification polling
+        if (notificationPollingInterval) {
+            clearInterval(notificationPollingInterval);
+            notificationPollingInterval = null;
+        }
+        
         document.getElementById('user-actions').style.display = 'flex';
         document.getElementById('user-profile').style.display = 'none';
         
@@ -232,8 +357,11 @@ function updateUIAfterLogin() {
     document.getElementById('user-role').textContent = 
         currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
     
-    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
-    document.getElementById('user-avatar').textContent = initials.toUpperCase();
+    // Update avatars
+    updateAvatars();
+    
+    // Update profile pages
+    updateProfilePages();
     
     document.getElementById('nav-browse').style.display = 'none';
     document.getElementById('nav-my-requests').style.display = 'none';
@@ -247,7 +375,57 @@ function updateUIAfterLogin() {
         document.getElementById('nav-browse').style.display = 'list-item';
         document.getElementById('nav-my-offers').style.display = 'list-item';
     }
+    
+    // Start notification polling
+    startNotificationPolling();
 }
+
+function updateAvatars() {
+    const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const avatarElements = [
+        document.getElementById('user-avatar'),
+        document.getElementById('profile-avatar-large'),
+        document.getElementById('avatar-preview')
+    ];
+    
+    avatarElements.forEach(element => {
+        if (element) {
+            if (currentUser.profile_image) {
+                element.innerHTML = `<img src="${currentUser.profile_image}" alt="Profile">`;
+            } else {
+                element.innerHTML = initials; // Clear any existing images and show initials
+            }
+        }
+    });
+}
+
+function updateProfilePages() {
+    if (!currentUser) return;
+    
+    // Update View Profile page
+    document.getElementById('profile-display-name').textContent = currentUser.name;
+    document.getElementById('profile-role-badge').textContent = 
+        currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    document.getElementById('profile-info-name').textContent = currentUser.name;
+    document.getElementById('profile-info-email').textContent = currentUser.email;
+    document.getElementById('profile-info-role').textContent = 
+        currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    document.getElementById('profile-info-location').textContent = currentUser.location || 'Not specified';
+    document.getElementById('profile-info-status').textContent = currentUser.verified ? 'Verified' : 'Active';
+    
+    // Update Manage Account page
+    document.getElementById('profile-name').value = currentUser.name;
+    document.getElementById('profile-location').value = currentUser.location || '';
+    document.getElementById('current-role-display').textContent = 
+        currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+    
+    const targetRole = currentUser.role === 'requester' ? 'Volunteer' : 'Requester';
+    document.getElementById('target-role').textContent = targetRole;
+    
+    // Check role switch cooldown
+    checkRoleSwitchCooldown();
+}
+
 
 function navigateToSection(sectionId) {
     console.log('📄 Navigating to:', sectionId);
@@ -265,10 +443,24 @@ function navigateToSection(sectionId) {
             setTimeout(() => loadBrowseRequests(), 100);
         }
         if (sectionId === 'requester-dashboard') {
-            setTimeout(() => loadRequesterDashboard(), 100);
+            setTimeout(() => {
+                loadRequesterDashboard();
+                // Initialize dashboard card filtering after dashboard loads
+                setTimeout(() => initializeDashboardCardFiltering(), 200);
+            }, 100);
         }
         if (sectionId === 'volunteer-dashboard') {
-            setTimeout(() => loadVolunteerDashboard(), 100);
+            setTimeout(() => {
+                loadVolunteerDashboard();
+                // Initialize dashboard card filtering after dashboard loads
+                setTimeout(() => initializeDashboardCardFiltering(), 200);
+            }, 100);
+        }
+        if (sectionId === 'view-profile') {
+            updateProfilePages();
+        }
+        if (sectionId === 'manage-account') {
+            updateProfilePages();
         }
     }
 }
@@ -679,6 +871,367 @@ function getCategoryIcon(category) {
         'Other': 'hand-holding-heart'
     };
     return icons[category] || 'hand-holding-heart';
+}
+
+// ==================== NOTIFICATION FUNCTIONS ====================
+
+function startNotificationPolling() {
+    // Clear any existing interval
+    if (notificationPollingInterval) {
+        clearInterval(notificationPollingInterval);
+    }
+    
+    // Load immediately
+    loadUnreadNotificationCount();
+    
+    // Poll every 30 seconds
+    notificationPollingInterval = setInterval(() => {
+        loadUnreadNotificationCount();
+    }, 30000);
+}
+
+async function loadUnreadNotificationCount() {
+    try {
+        const response = await fetch(`${API_URL}/notifications/unread-count`, {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const badge = document.getElementById('notification-badge');
+            if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.log('ℹ️  Could not load notification count');
+    }
+}
+
+async function loadNotificationsDropdown() {
+    try {
+        const response = await fetch(`${API_URL}/notifications`, {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const list = document.getElementById('notification-list');
+            
+            if (data.notifications && data.notifications.length > 0) {
+                list.innerHTML = data.notifications.map(notif => `
+                    <div class="notification-item ${notif.is_read ? '' : 'unread'}" data-id="${notif.notification_id}">
+                        <p>${notif.message}</p>
+                        <small>${new Date(notif.sent_date).toLocaleString()}</small>
+                    </div>
+                `).join('');
+                
+                // Add click handlers to mark as read
+                list.querySelectorAll('.notification-item.unread').forEach(item => {
+                    item.addEventListener('click', () => markNotificationAsRead(item.dataset.id));
+                });
+            } else {
+                list.innerHTML = '<p class="no-notifications">No new notifications</p>';
+            }
+        }
+    } catch (error) {
+        console.log('ℹ️  Could not load notifications');
+    }
+}
+
+async function markNotificationAsRead(notificationId) {
+    try {
+        const response = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+            method: 'PATCH',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            // Reload notifications
+            loadNotificationsDropdown();
+            loadUnreadNotificationCount();
+        }
+    } catch (error) {
+        console.log('ℹ️  Could not mark notification as read');
+    }
+}
+
+// ==================== PROFILE MANAGEMENT FUNCTIONS ====================
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('profile-name').value;
+    const location = document.getElementById('profile-location').value;
+    
+    try {
+        const response = await fetch(`${API_URL}/auth/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, location })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentUser = data.user;
+            updateUIAfterLogin();
+            alert('Profile updated successfully!');
+        } else {
+            alert(data.error || 'Failed to update profile');
+        }
+    } catch (error) {
+        console.error('❌ Update profile error:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-new-password').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('New passwords do not match!');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('New password must be at least 6 characters!');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/auth/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Password changed successfully!');
+            document.getElementById('change-password-form').reset();
+        } else {
+            alert(data.error || 'Failed to change password');
+        }
+    } catch (error) {
+        console.error('❌ Change password error:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
+function handleImageSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Image size must be less than 2MB');
+        return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    selectedImageFile = file;
+    
+    // Preview image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const preview = document.getElementById('avatar-preview');
+        preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        document.getElementById('upload-image-btn').disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function handleImageUpload() {
+    if (!selectedImageFile) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const imageData = e.target.result;
+        
+        try {
+            const response = await fetch(`${API_URL}/user/profile-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ imageData })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentUser.profile_image = data.imageData;
+                updateAvatars();
+                alert('Profile image uploaded successfully!');
+                document.getElementById('upload-image-btn').disabled = true;
+            } else {
+                alert(data.error || 'Failed to upload image');
+            }
+        } catch (error) {
+            console.error('❌ Upload image error:', error);
+            alert('Connection error. Please try again.');
+        }
+    };
+    reader.readAsDataURL(selectedImageFile);
+}
+
+async function handleRoleSwitch() {
+    if (!confirm('Are you sure you want to switch roles? You can only switch once every 24 hours.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/user/switch-role`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentUser = data.user;
+            updateUIAfterLogin();
+            alert(`Role switched successfully! You are now a ${data.newRole}.`);
+            
+            // Navigate to appropriate dashboard
+            if (data.newRole === 'requester') {
+                navigateToSection('requester-dashboard');
+            } else {
+                navigateToSection('browse');
+            }
+        } else {
+            if (data.remainingHours) {
+                alert(`Role switch cooldown active. You can switch again in ${data.remainingHours} hours.`);
+            } else {
+                alert(data.error || 'Failed to switch role');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Switch role error:', error);
+        alert('Connection error. Please try again.');
+    }
+}
+
+function checkRoleSwitchCooldown() {
+    const cooldownMessage = document.getElementById('cooldown-message');
+    const switchBtn = document.getElementById('switch-role-btn');
+    
+    if (!currentUser.last_role_switch) {
+        cooldownMessage.style.display = 'none';
+        switchBtn.disabled = false;
+        return;
+    }
+    
+    const lastSwitch = new Date(currentUser.last_role_switch).getTime();
+    const now = Date.now();
+    const timeSinceSwitch = now - lastSwitch;
+    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours
+    
+    if (timeSinceSwitch < cooldownPeriod) {
+        const remainingTime = cooldownPeriod - timeSinceSwitch;
+        const hoursRemaining = Math.ceil(remainingTime / (60 * 60 * 1000));
+        cooldownMessage.textContent = `Cooldown active. You can switch roles again in ${hoursRemaining} hours.`;
+        cooldownMessage.style.display = 'block';
+        switchBtn.disabled = true;
+    } else {
+        cooldownMessage.style.display = 'none';
+        switchBtn.disabled = false;
+    }
+}
+
+// ==================== SEARCH FUNCTIONALITY ====================
+
+function handleSearch() {
+    const searchTerm = document.getElementById('home-search').value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        displayHomeRequests(allRequests.slice(0, 6));
+        return;
+    }
+    
+    const filtered = allRequests.filter(request => {
+        return request.title.toLowerCase().includes(searchTerm) ||
+               request.description.toLowerCase().includes(searchTerm) ||
+               (request.category && request.category.toLowerCase().includes(searchTerm)) ||
+               (request.location && request.location.toLowerCase().includes(searchTerm));
+    });
+    
+    displayHomeRequests(filtered);
+}
+
+// ==================== DASHBOARD CARD FILTERING ====================
+
+function initializeDashboardCardFiltering() {
+    // This will be called when dashboard is loaded
+    document.querySelectorAll('.dashboard-card').forEach(card => {
+        card.addEventListener('click', function() {
+            // Remove active class from all cards
+            document.querySelectorAll('.dashboard-card').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked card
+            this.classList.add('active');
+            
+            // Get filter type from card content
+            const cardText = this.querySelector('h3').textContent;
+            
+            // Apply filter based on card type
+            if (cardText.includes('Active')) {
+                selectedFilter = 'active';
+            } else if (cardText.includes('Pending')) {
+                selectedFilter = 'pending';
+            } else if (cardText.includes('Completed')) {
+                selectedFilter = 'completed';
+            }
+            
+            // Reload dashboard with filter
+            if (currentUser.role === 'requester') {
+                loadRequesterDashboard();
+            } else if (currentUser.role === 'volunteer') {
+                loadVolunteerDashboard();
+            }
+        });
+    });
+}
+
+// ==================== URGENT TIMER FUNCTIONALITY ====================
+
+function addUrgentTimers() {
+    // Add timers to all urgent requests
+    document.querySelectorAll('.post-card').forEach(card => {
+        const urgencyElement = card.querySelector('.status-urgent');
+        if (urgencyElement) {
+            const requestId = card.querySelector('.offer-help-btn')?.dataset.requestId;
+            if (requestId) {
+                // TODO: Implement full timer functionality when urgent_timer_start is populated in database
+                // For now, display a static indicator for urgent requests
+                const timerHTML = `
+                    <div class="urgent-timer">
+                        <i class="fas fa-clock"></i>
+                        <span>Urgent Request</span>
+                    </div>
+                `;
+                const contentDiv = card.querySelector('.post-content');
+                if (contentDiv && !contentDiv.querySelector('.urgent-timer')) {
+                    contentDiv.insertAdjacentHTML('beforeend', timerHTML);
+                }
+            }
+        }
+    });
 }
 
 window.navigateToSection = navigateToSection;
