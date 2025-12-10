@@ -3,6 +3,12 @@ const API_URL = 'http://localhost:3000/api';
 
 let currentUser = null;
 let allRequests = [];
+let notificationPollingInterval = null;
+let urgentTimerInterval = null;
+
+// Constants
+const URGENT_TIMER_DURATION_MS = 3600000; // 1 hour in milliseconds
+const NOTIFICATION_POLL_INTERVAL_MS = 30000; // 30 seconds
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -243,6 +249,12 @@ async function handleLogout() {
         });
         
         currentUser = null;
+        
+        // Cleanup intervals
+        if (notificationPollingInterval) {
+            clearInterval(notificationPollingInterval);
+            notificationPollingInterval = null;
+        }
         
         document.getElementById('user-actions').style.display = 'flex';
         document.getElementById('user-profile').style.display = 'none';
@@ -645,7 +657,7 @@ function createRequestCard(request, showOfferButton) {
     if (request.urgency_level === 'high' && request.urgent_timer_start) {
         const startTime = new Date(request.urgent_timer_start).getTime();
         const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, 3600000 - elapsed); // 1 hour in ms
+        const remaining = Math.max(0, URGENT_TIMER_DURATION_MS - elapsed);
         
         if (remaining > 0) {
             const minutes = Math.floor(remaining / 60000);
@@ -789,9 +801,10 @@ async function loadNotificationCount() {
 }
 
 function startNotificationPolling() {
-    // Check every 30 seconds
+    // Clean up any existing interval
     if (notificationPollingInterval) clearInterval(notificationPollingInterval);
-    notificationPollingInterval = setInterval(loadNotificationCount, 30000);
+    // Check every 30 seconds
+    notificationPollingInterval = setInterval(loadNotificationCount, NOTIFICATION_POLL_INTERVAL_MS);
 }
 
 async function toggleNotificationDropdown() {
@@ -818,16 +831,27 @@ async function loadNotificationDropdown() {
             const data = await response.json();
             
             if (data.notifications && data.notifications.length > 0) {
-                listContainer.innerHTML = data.notifications.map(notif => `
-                    <div class="notification-item ${!notif.is_read ? 'unread' : ''}" data-id="${notif.notification_id}">
-                        <p>${notif.message}</p>
-                        <small>${new Date(notif.sent_date).toLocaleString()}</small>
-                    </div>
-                `).join('');
-                
-                // Add click handlers to mark as read
-                document.querySelectorAll('.notification-item.unread').forEach(item => {
-                    item.addEventListener('click', () => markNotificationRead(item.dataset.id));
+                // Create notification elements safely without XSS vulnerability
+                listContainer.innerHTML = '';
+                data.notifications.forEach(notif => {
+                    const div = document.createElement('div');
+                    div.className = `notification-item ${!notif.is_read ? 'unread' : ''}`;
+                    div.dataset.id = notif.notification_id;
+                    
+                    const p = document.createElement('p');
+                    p.textContent = notif.message; // Use textContent to prevent XSS
+                    
+                    const small = document.createElement('small');
+                    small.textContent = new Date(notif.sent_date).toLocaleString();
+                    
+                    div.appendChild(p);
+                    div.appendChild(small);
+                    listContainer.appendChild(div);
+                    
+                    // Add click handler if unread
+                    if (!notif.is_read) {
+                        div.addEventListener('click', () => markNotificationRead(notif.notification_id));
+                    }
                 });
             } else {
                 listContainer.innerHTML = '<p style="padding: 1rem; text-align: center; color: var(--gray);">No notifications</p>';
@@ -1003,11 +1027,16 @@ async function handleRoleSwitch() {
 
 // ==================== URGENT TIMER UPDATE ====================
 function startUrgentTimerUpdates() {
-    setInterval(() => {
+    // Clean up any existing interval
+    if (urgentTimerInterval) {
+        clearInterval(urgentTimerInterval);
+    }
+    
+    urgentTimerInterval = setInterval(() => {
         document.querySelectorAll('.urgent-timer').forEach(timer => {
             const startTime = new Date(timer.dataset.start).getTime();
             const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, 3600000 - elapsed); // 1 hour
+            const remaining = Math.max(0, URGENT_TIMER_DURATION_MS - elapsed);
             
             if (remaining > 0) {
                 const minutes = Math.floor(remaining / 60000);

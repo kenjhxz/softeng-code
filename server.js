@@ -493,6 +493,20 @@ app.post('/api/user/profile-image', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'Profile image required' });
         }
         
+        // Validate base64 format
+        if (!profile_image.startsWith('data:image/')) {
+            return res.status(400).json({ error: 'Invalid image format. Must be a base64 image.' });
+        }
+        
+        // Check size (approximately 2MB in base64, accounting for ~33% overhead)
+        const base64Length = profile_image.length;
+        const sizeInBytes = (base64Length * 3) / 4;
+        const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
+        
+        if (sizeInBytes > maxSizeInBytes) {
+            return res.status(400).json({ error: 'Image size exceeds 2MB limit' });
+        }
+        
         await pool.query(
             'UPDATE users SET profile_image = ? WHERE user_id = ?',
             [profile_image, req.session.user.id]
