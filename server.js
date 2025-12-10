@@ -252,8 +252,186 @@ app.post('/api/auth/logout', (req, res) => {
     });
 });
 
-app.get('/api/auth/me', isAuthenticated, (req, res) => {
-    res.json({ user: req.session.user });
+app.get('/api/auth/me', isAuthenticated, async (req, res) => {
+    try {
+        const [users] = await pool.query(
+            'SELECT user_id, name, email, role, location, verified, profile_image, last_role_switch FROM users WHERE user_id = ?',
+            [req.session.user.id]
+        );
+        
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const user = {
+            id: users[0].user_id,
+            name: users[0].name,
+            email: users[0].email,
+            role: users[0].role,
+            location: users[0].location,
+            verified: users[0].verified,
+            profile_image: users[0].profile_image,
+            last_role_switch: users[0].last_role_switch
+        };
+        
+        // Update session with fresh data
+        req.session.user = user;
+        
+        res.json({ user });
+    } catch (error) {
+        console.error('❌ Get user error:', error);
+        res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+});
+
+// ==================== USER PROFILE ROUTES ====================
+
+// Update user profile (name, location)
+app.put('/api/auth/profile', isAuthenticated, async (req, res) => {
+    try {
+        const { name, location } = req.body;
+        const userId = req.session.user.id;
+
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+
+        await pool.query(
+            'UPDATE users SET name = ?, location = ? WHERE user_id = ?',
+            [name, location || null, userId]
+        );
+
+        // Update session
+        req.session.user.name = name;
+        req.session.user.location = location;
+
+        console.log('✅ Profile updated for user:', userId);
+        res.json({ message: 'Profile updated successfully', user: req.session.user });
+    } catch (error) {
+        console.error('❌ Update profile error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// Change password
+app.put('/api/auth/password', isAuthenticated, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.session.user.id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current and new passwords are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters' });
+        }
+
+        // Verify current password
+        const [users] = await pool.query('SELECT password FROM users WHERE user_id = ?', [userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const validPassword = await bcrypt.compare(currentPassword, users[0].password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+
+        // Hash and update new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query('UPDATE users SET password = ? WHERE user_id = ?', [hashedPassword, userId]);
+
+        console.log('✅ Password changed for user:', userId);
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('❌ Change password error:', error);
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+
+// Upload profile image
+app.post('/api/user/profile-image', isAuthenticated, async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        const userId = req.session.user.id;
+
+        if (!imageData) {
+            return res.status(400).json({ error: 'Image data is required' });
+        }
+
+        // Validate base64 image size (approximately 2MB limit)
+        const base64Size = imageData.length * 0.75; // Approximate size in bytes
+        if (base64Size > 2 * 1024 * 1024) {
+            return res.status(400).json({ error: 'Image size exceeds 2MB limit' });
+        }
+
+        await pool.query('UPDATE users SET profile_image = ? WHERE user_id = ?', [imageData, userId]);
+
+        // Update session
+        req.session.user.profile_image = imageData;
+
+        console.log('✅ Profile image uploaded for user:', userId);
+        res.json({ message: 'Profile image uploaded successfully', imageData });
+    } catch (error) {
+        console.error('❌ Upload profile image error:', error);
+        res.status(500).json({ error: 'Failed to upload profile image' });
+    }
+});
+
+// Switch role with 24-hour cooldown
+app.post('/api/user/switch-role', isAuthenticated, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const currentRole = req.session.user.role;
+
+        // Check last role switch
+        const [users] = await pool.query(
+            'SELECT last_role_switch FROM users WHERE user_id = ?',
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const lastSwitch = users[0].last_role_switch;
+        if (lastSwitch) {
+            const timeSinceSwitch = Date.now() - new Date(lastSwitch).getTime();
+            const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+            if (timeSinceSwitch < cooldownPeriod) {
+                const remainingTime = cooldownPeriod - timeSinceSwitch;
+                const hoursRemaining = Math.ceil(remainingTime / (60 * 60 * 1000));
+                return res.status(400).json({
+                    error: 'Role switch cooldown active',
+                    remainingHours: hoursRemaining,
+                    canSwitchAt: new Date(new Date(lastSwitch).getTime() + cooldownPeriod).toISOString()
+                });
+            }
+        }
+
+        // Switch role
+        const newRole = currentRole === 'requester' ? 'volunteer' : 'requester';
+        await pool.query(
+            'UPDATE users SET role = ?, last_role_switch = NOW() WHERE user_id = ?',
+            [newRole, userId]
+        );
+
+        // Update session
+        req.session.user.role = newRole;
+        req.session.user.last_role_switch = new Date().toISOString();
+
+        console.log('✅ Role switched for user:', userId, 'to', newRole);
+        res.json({
+            message: 'Role switched successfully',
+            newRole,
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('❌ Switch role error:', error);
+        res.status(500).json({ error: 'Failed to switch role' });
+    }
 });
 
 // ==================== REQUEST ROUTES ====================
@@ -432,6 +610,54 @@ app.get('/api/notifications', async (req, res) => {
     } catch (error) {
         console.error('❌ Get notifications error:', error);
         res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+});
+
+// Get unread notification count
+app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as count FROM notifications WHERE recipient_id = ? AND is_read = FALSE',
+            [req.session.user.id]
+        );
+
+        res.json({ count: result[0].count });
+    } catch (error) {
+        console.error('❌ Get unread count error:', error);
+        res.status(500).json({ error: 'Failed to fetch unread count' });
+    }
+});
+
+// Mark notification as read
+app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+        const notificationId = req.params.id;
+        const userId = req.session.user.id;
+
+        // Verify notification belongs to user
+        const [notifications] = await pool.query(
+            'SELECT recipient_id FROM notifications WHERE notification_id = ?',
+            [notificationId]
+        );
+
+        if (notifications.length === 0) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+
+        if (notifications[0].recipient_id !== userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        await pool.query(
+            'UPDATE notifications SET is_read = TRUE WHERE notification_id = ?',
+            [notificationId]
+        );
+
+        console.log('✅ Notification marked as read:', notificationId);
+        res.json({ message: 'Notification marked as read' });
+    } catch (error) {
+        console.error('❌ Mark notification as read error:', error);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
     }
 });
 
